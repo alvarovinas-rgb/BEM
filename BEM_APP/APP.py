@@ -148,7 +148,8 @@ if st.button("▶️ Executar Simulació BEM", type="primary"):
                     A_rotor = np.pi * radius_d**2
                     P_wind = (0.5 * density_f * A_rotor * velocity_inf_f**3) / 1e3
 
-                    Cp_ideal = (2 / radius_d**2) * np.trapz(4 * factor_axial * (1 - factor_axial)**2 * specific_radius, specific_radius)
+                    # Solució del error de Numpy usant .trapezoid en lloc de .trapz
+                    Cp_ideal = (2 / radius_d**2) * np.trapezoid(4 * factor_axial * (1 - factor_axial)**2 * specific_radius, specific_radius)
                     Cp_real = power_shaft_total / P_wind
 
                     Cp_geometric_ideal_list[j] = Cp_ideal
