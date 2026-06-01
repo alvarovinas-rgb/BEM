@@ -1,0 +1,301 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# ======================================================
+# 1. VARIABLES FIJAS (CONDICIONES DE FUNCIONAMIENTO) (inputs)
+# ======================================================
+
+# --- Fluido ---
+density_f = 1.225          # kg/m³, densidad del fluido
+velocity_inf_f = 11.4        # m/s, velocidad libre
+
+# --- Rotor ---
+radius_d = 126/2            # m, radio total del rotor
+divisions_d = 19          # número de anillos
+velocity_ang = float(1.2671)       # rad/s, velocidad angular (inicial) 
+N =3
+
+#------ Factores (de momento)
+
+factor_axial = float(0.3)     #a
+factor_tangencial = float(0.01)  # a'
+
+# ======================================================
+# 2. dISCRETITZACIÓ DE LA PALA  Calcular llista de radis, i dR.
+# ======================================================       
+
+dr_d = radius_d / divisions_d   # Ancho de cada anillo
+
+ # specific_radius = np.array([(i + 0.5) * dr_d for i in range(divisions_d)]) # Radios en el centro de cada anillo
+
+# ======================================================
+# 3. Blade definition (by parts) (INPUT)
+# ======================================================
+
+specific_radius = [
+1.5, 2.867, 5.6, 8.333, 11.75,
+15.85, 19.95, 24.05, 28.15, 32.25,
+36.35, 40.45, 44.55, 48.65, 52.75,
+56.167, 58.9, 60.1333, 61.5,
+]
+
+specific_radius = np.array(specific_radius)
+
+cuerda = [ 3.542, 3.542, 3.854, 4.167,
+4.557, 4.652, 4.458, 4.249, 4.007,
+3.748, 3.502, 3.256, 3.01, 2.764,
+2.518, 2.313, 2.086, 1.419, 0.961
+]  #Cuerda geométrica de cada parte (DADA)
+
+beta = [
+13.308, 13.308, 13.308, 13.308, 13.308,
+11.48, 10.162, 9.011, 7.795, 6.544,
+5.361, 4.188, 3.125, 2.319, 1.526,
+0.863, 0.37, 0.11, 0
+] # Ángulo beta (twist) de cada parte (DADO)
+
+c_lift = [
+   0, 0, 0, 0, 1.168,
+1.57, 1.318, 1.135, 1.062, 1.062,
+1.046, 1.046, 1.011, 1.011, 1.011, 
+1.103, 1.103, 1.103, 1.181
+]
+
+
+c_drag = [
+    0.5, 0.5, 0.5, 0.35, 0.2684,
+0.0174, 0.0126, 0.0103, 0.0079, 0.0079, 
+0.0079, 0.0079, 0.0058, 0.0058, 0.0058,
+0.0091, 0.0091, 0.0091, 0.0113,
+]
+
+dA = np.array([dr_d * c for c in cuerda]) # Càlcul d'arees. 
+
+v_tan=np.array(specific_radius*velocity_ang*(factor_tangencial+1 )) # de moment Vtan = wr(a'+1 ) *pero a' es 0)
+
+v_axial = velocity_inf_f*(1-factor_axial)  # de moment Vtan = v_inf(1-a) *pero a es 0)
+
+local_solidity =np.array([(N*c)/(2*np.pi * r ) for c,r in zip(cuerda,specific_radius)])
+
+
+#CREACIÓ DE LA BLADE DISCRETITZADA AMB UN DICCIONARI. 
+
+pala = []
+
+for i in range(divisions_d):    # Genero una llista en (r,corda,beta,area,V_tat "provisional",V_ax "provisinal", solidez local")
+    parte = {
+        "r [m]": specific_radius[i],
+        "cuerda [m]": cuerda[i],
+        "beta [deg]": beta[i],
+        "area [m²]": dA [i],
+        "V_tan [m/s]": v_tan [i],
+        "V_ax [m/s]": v_axial,
+        "solidez_local" : local_solidity [i]
+        }
+
+    pala.append(parte)
+
+# ==============================
+# Mostrar tabla de la pala
+# ==============================
+
+# Cabecera
+print(f"{'Parte':>4} | {'Radio [m]':>8} | {'Cuerda [m]':>10} | {'Beta [deg]':>10} | {'Area [m²]':>10} | {'V_tan [m/s]':>12} | {'V_ax [m/s]':>12} | {'Solidez':>8}")
+print("-" * 95)
+
+for i, parte in enumerate(pala):
+    print(f"{i:>4} | "
+          f"{parte['r [m]']:>8.2f} | "
+          f"{parte['cuerda [m]']:>10.2f} | "
+          f"{parte['beta [deg]']:>10.2f} | "
+          f"{parte['area [m²]']:>10.2f} | "
+          f"{parte['V_tan [m/s]']:>12.2f} | "
+          f"{parte['V_ax [m/s]']:>12.2f} | "
+          f"{parte['solidez_local']:>8.3f}")
+    
+# ======================================================
+# DIBUJO 2D DE LA PALA (PLANFORM REAL)
+# ======================================================
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Bordes radiales (IMPORTANTE)
+r_edges = np.linspace(0, radius_d, divisions_d + 1)
+
+# Mitad superior e inferior de la cuerda
+upper = np.array(cuerda) / 2
+lower = -upper
+
+plt.figure(figsize=(12, 3))
+
+# Dibujar cada sección correctamente
+for i in range(divisions_d):
+    plt.fill_between(
+        [r_edges[i], r_edges[i + 1]],
+        [lower[i], lower[i]],
+        [upper[i], upper[i]],
+        color="skyblue",
+        edgecolor="black"
+    )
+
+# Línea del eje de la pala
+plt.plot(r_edges, np.zeros_like(r_edges), "k--", linewidth=1)
+
+# Etiquetas y formato
+plt.xlabel("Radio [m]")
+plt.ylabel("Cuerda [m]")
+plt.title("Pala 2D – Vista en planta (planform)")
+plt.grid(True)
+plt.axis("equal")
+plt.tight_layout()
+plt.show()
+
+# ======================================================
+# 4. Bucle per intentar trobar a i a'.
+# ======================================================
+
+max_iter = 22
+tol = float(0.03)
+
+for iter in range (max_iter):
+
+
+    v_axial_blade = velocity_inf_f * (1 - factor_axial)     #Trobem velocitats relatives.  
+    v_tan_air_blade = velocity_ang * specific_radius * (1 + factor_tangencial)    # Componente tangencial relativa (fluido + pala)
+    W = np.sqrt(v_axial_blade**2 + v_tan_air_blade**2)       # Módulo de la velocidad relativa
+
+
+    #Angles
+    phi =(np.arctan(v_axial_blade / v_tan_air_blade))
+    alpha = phi - np.array(np.deg2rad(beta))
+    
+    # Aqui faltaria que em cerces a la base de dades, m'interpoles valors de c_lift i de c_:drag per cada un dels valors de alpha.
+
+    C_axial = np.array(c_lift) * np.cos(phi) + np.array(c_drag) * np.sin(phi)
+    C_tan= np.array(c_lift) * np.sin(phi) - np.array(c_drag) * np.cos(phi)
+
+    new_factor_axial = 1 / ((4*np.sin(phi)**2) / (local_solidity * C_axial) + 1)
+    new_factor_tangencial = 1 / ((4*np.sin(phi)*np.cos(phi)) / (local_solidity * C_tan) - 1)
+    
+    factor_axial = new_factor_axial
+    factor_tangencial = new_factor_tangencial
+
+    if np.all(np.abs(new_factor_axial - factor_axial) < tol) and np.all(np.abs(new_factor_tangencial-factor_tangencial) < tol): # relatiu
+        break
+
+
+# ======================================================
+# 5. Tabla final con velocidades inducidas
+# ======================================================
+
+v_axial_air_final = velocity_inf_f * (1 - factor_axial)
+v_tan_air_final = velocity_ang * specific_radius * (1 + factor_tangencial)
+
+print("\nTABLA FINAL CON FACTORES DE INDUCCIÓN")
+print(
+    f"{'Parte':>5} | "
+    f"{'Radio [m]':>10} | "
+    f"{'V_fluid_ax [m/s]':>18} | "
+    f"{'V_fluid_tan [m/s]':>20} | "
+    f"{'a':>8} | "
+    f"{'a\'':>8}"
+)
+print("-" * 85)
+
+for i in range(divisions_d):
+    print(
+        f"{i:>5} | "
+        f"{specific_radius[i]:>10.2f} | "
+        f"{v_axial_air_final[i]:>18.3f} | "
+        f"{v_tan_air_final[i]:>20.3f} | "
+        f"{factor_axial[i]:>8.3f} | "
+        f"{factor_tangencial[i]:>8.3f}"
+    )
+
+
+# ======================================================
+# 6. VELOCIDAD RELATIVA FLUIDO  "BLADE"
+# ======================================================
+
+W = np.sqrt(v_axial_air_final**2 + v_tan_air_final**2)
+
+#======================================================
+# 7. FUERZAS AERODINÁMICAS (POR PALA) "BLADE" 
+# ======================================================
+
+force_lift = 0.5 * density_f * W**2 * cuerda * c_lift    # Sustentació L =0,5 W** c  ScL(alpha)  # N/m
+force_drag = 0.5 * density_f * W**2 * cuerda * c_drag   # aqui podria escriure cuerda i dr_r copm d_A?,. no he de pposar dr, pq ho faig dsps integrant en trapezis
+
+# Proyección en eje del rotor (vectorizada)
+dF_z_local_blade = force_lift* np.cos(phi) + force_drag * np.sin(phi)
+dF_theta_local_blade = force_lift * np.sin(phi) - force_drag * np.cos(phi)
+
+
+dF_z_total= N * np.trapezoid(dF_z_local_blade, specific_radius)  # fer integral trapezis!!
+dF_tetha_total= N * np.trapezoid(dF_z_local_blade, specific_radius)
+
+
+# ======================================================
+# 8. Potencia blade "BLADE" #Totes en Kw
+# ======================================================
+
+#Potencia de cada aparte de pala considerando las fuerzas proyectadas em KW
+power_blade_per_part = (dF_z_local_blade *v_axial_blade + dF_theta_local_blade * velocity_ang * specific_radius)/ 1e3
+
+# Potencia total de todas las palas
+power_blade_total = N * np.sum(power_blade_per_part)
+
+#Potencia en el eje:
+power_tan_blade = N * np.sum((dF_theta_local_blade * velocity_ang * specific_radius))/ 1e3
+
+print("The power for blade is", power_blade_total,"\nThe power in the shaft of the turbine is" ,power_tan_blade)
+
+# ======================================================
+# 9. "ROTOR IDEAL" 
+# ======================================================
+
+area_ring = np.array([
+    np.pi * ((r + dr_d / 2)**2 - (r - dr_d / 2)**2)
+    for r in specific_radius
+])
+
+force_radius = np.array([
+    (2 * factor_axial * density_f * A *
+     (1 - factor_axial) * velocity_inf_f**2) / 1e3
+    for A in area_ring
+])
+
+power_radius = np.array([
+    f * v_axial_air_final for f in force_radius
+])
+
+power_total_disk = np.sum(power_radius)
+
+# Clculo del torque por cada  radio  # dQ=ρ*vD*​vtan*​rdA
+torque_radius = np.array([
+    density_f *
+    v_axial_air_final *     # v_D = (1-a)U∞
+    A *
+    v_tan *
+    r
+    for r, A, v_tan in zip(specific_radius, dA, v_tan_air_final)
+]) / 1e3   # kN·m
+
+# ======================================================
+# 10. Rendimientos "BLADE"
+# ======================================================
+
+geometric_coefficient = float(power_blade_total/power_total_disk)
+aerodinamic_coefficient = power_tan_blade/power_blade_total
+total_coeficient = power_tan_blade/power_total_disk
+
+print("THE COEFICIENTS ARE:",geometric_coefficient,aerodinamic_coefficient,total_coeficient)
+
+# ======================================================
+# 11. Cp (coeficient de potencia)
+# ======================================================
+
+Cp= np.mean(4 *factor_axial *(1-factor_axial)**2)
+
+print(Cp)
